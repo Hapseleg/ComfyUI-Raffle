@@ -11,5 +11,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "Raffle": "Raffle",
     "PreviewHistory": "Preview History (Raffle)" # Add the renamed display name
 }
+WEB_DIRECTORY = "./web"
 
-__all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
+__all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]
