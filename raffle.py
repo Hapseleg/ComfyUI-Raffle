@@ -127,7 +127,7 @@ class Raffle:
     
     
     
-    def _load_taglist(self, filename, taglists_must_include_tags=None, exclude_tags=None, seed=0, tag_limit=1000):
+    def _load_taglist(self, filename, taglists_must_include_tags=None, exclude_tags=None, seed=0, tag_limit=-1):
         random.seed(seed)  # Ensure consistent shuffling based on seed
         """Load a line from a file, finding taglists that match required tags"""
         extension_path = os.path.normpath(os.path.dirname(__file__))
@@ -143,7 +143,7 @@ class Raffle:
             # Directly iterate over lines of the file for memory efficiency.
             with open(filepath, 'r', encoding='utf-8') as f:
                 for taglist_num, taglist in enumerate(f):
-                    if taglist_num >= tag_limit: break # Limit to 100 lines
+                    if tag_limit != -1 and taglist_num >= tag_limit: break 
                     taglist = taglist.strip()
                     if not taglist:
                         continue
@@ -219,7 +219,6 @@ class Raffle:
                     use_general=True, use_questionable=False, use_sensitive=False, use_explicit=False,
                     exclude_tag_categories="", **kwargs):
         start_time = time.time()
-        printTime("Processing tags",start_time)
         # Add directory existence check
         extension_path = os.path.normpath(os.path.dirname(__file__))
         lists_path = os.path.join(extension_path, "lists")
@@ -279,18 +278,20 @@ class Raffle:
         ]
         
         # Process excluded categories
-        excluded_categories = []
-        if exclude_tag_categories.strip():
-            excluded_categories = self.normalize_tags(exclude_tag_categories)
-            
-            # Check if all excluded categories are valid
-            invalid_categories = [c for c in excluded_categories if c not in all_categories]
-            if invalid_categories:
-                error_msg = (f"Error: Invalid category names: {', '.join(invalid_categories)}. "
-                            f"Please check the Debug info output for a complete list of valid categories. "
-                            f"Category names may have changed in a new version.")
-                raise ValueError(error_msg)
+        # excluded_categories = []
+        # if exclude_tag_categories != "":
+        excluded_categories = exclude_tag_categories.split(',')
+        # excluded_categories = self.normalize_tags(exclude_tag_categories)
         
+        # Check if all excluded categories are valid
+        # if len(excluded_categories) > 0:
+        #     invalid_categories = [c for c in excluded_categories if c not in all_categories]
+        #     if invalid_categories:
+        #         error_msg = (f"Error: Invalid category names: {', '.join(invalid_categories)}. "
+        #                     f"Please check the Debug info output for a complete list of valid categories. "
+        #                     f"Category names may have changed in a new version.")
+        #         raise ValueError(error_msg)
+    
         # Set up categories dictionary - enable all categories except excluded ones
         categories = {category: (category not in excluded_categories) for category in all_categories}
         
@@ -298,7 +299,6 @@ class Raffle:
         categories_debug = "-- List of Categories --\n" + "\n".join(all_categories)
 
         allowed_tags = []  # Changed from set to list to preserve order
-        printTime("Loading categorized tags",start_time)
         try:
             with open(categorized_tags_file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
@@ -328,28 +328,26 @@ class Raffle:
         # Collect all valid taglists from all enabled files
         all_valid_taglists = []
         
-        printTime("Loading enabled files",start_time)
+        printTime("Loadeding files",start_time)
         if use_general:
-            all_valid_taglists.extend(self._load_taglist("taglists-general.txt", included_tags, excluded_tags, seed, 1000))
+            all_valid_taglists.extend(self._load_taglist("taglists-general.txt", included_tags, excluded_tags, seed))
             printTime("Loaded general file",start_time)
         if use_questionable:
-            all_valid_taglists.extend(self._load_taglist("taglists-questionable.txt", included_tags, excluded_tags, seed, 10000))
+            all_valid_taglists.extend(self._load_taglist("taglists-questionable.txt", included_tags, excluded_tags, seed))
             printTime("Loaded questionable file",start_time)
         if use_sensitive:
-            all_valid_taglists.extend(self._load_taglist("taglists-sensitive.txt", included_tags, excluded_tags, seed, 50000))
+            all_valid_taglists.extend(self._load_taglist("taglists-sensitive.txt", included_tags, excluded_tags, seed))
             printTime("Loaded sensitive file",start_time)
         if use_explicit:
-            all_valid_taglists.extend(self._load_taglist("taglists-explicit.txt", included_tags, excluded_tags, seed, 100000))
+            all_valid_taglists.extend(self._load_taglist("taglists-explicit.txt", included_tags, excluded_tags, seed))
             printTime("Loaded explicit file",start_time)
 
         if not all_valid_taglists:
             raise ValueError("No tags available - no matching taglists found")
 
         # Use seed to shuffle and select from all valid taglists
-        printTime("Shuffling taglists",start_time)
         rng = random.Random(seed)
         rng.shuffle(all_valid_taglists)
-        printTime("Shuffled taglists",start_time)
         
         # Take just 1 taglist based on seed
         selected_index = seed % len(all_valid_taglists)
@@ -359,16 +357,13 @@ class Raffle:
         _, unfiltered_taglist = selected_taglist
         # Normalize the unfiltered taglist for consistency in output
         unfiltered_taglist = ', '.join(self.normalize_tags(unfiltered_taglist))
-        printTime("Selected index",start_time)
 
-        printTime("Filtering tags",start_time)
         # Split the taglist into individual tags and normalize them
         individual_tags = self.normalize_tags(unfiltered_taglist)
 
         # Filter tags using allowed_tags and maintain order
         allowed_tags_set = set(allowed_tags)  # For faster lookup
         filtered_tags = [tag for tag in individual_tags if tag in allowed_tags_set]
-        printTime("Processed tags",start_time)
         
         try:
             filtered_tags.sort(key=lambda x: allowed_tags.index(x) if x in allowed_tags else len(allowed_tags))
@@ -392,5 +387,4 @@ class Raffle:
             unfiltered_taglist,
             debug_info
         )
-        printTime("Processed tags",start_time)
         return return_values
